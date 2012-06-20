@@ -26,7 +26,7 @@
 #include <grp.h>
 #include <errno.h>
 #include <paths.h>
-#include <sys/personality.h>
+//#include <sys/personality.h>
 
 #if defined(HAVE_PRCTL)
 # include <sys/prctl.h>
