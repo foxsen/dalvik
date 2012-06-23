@@ -218,34 +218,34 @@ extern void dvmCompilerClobberSReg(CompilationUnit *cUnit, int sReg)
 }
 
 static int allocTempBody(CompilationUnit *cUnit, RegisterInfo *p, int numTemps,
-                         int *nextTemp, bool required)
+                         int *nextTemp, bool required, int step)
 {
     int i;
     int next = *nextTemp;
-    for (i=0; i< numTemps; i++) {
+    for (i=0; i< numTemps; i+=step) {
         if (next >= numTemps)
             next = 0;
         if (!p[next].inUse && !p[next].live) {
             dvmCompilerClobber(cUnit, p[next].reg);
             p[next].inUse = true;
             p[next].pair = false;
-            *nextTemp = next + 1;
+            *nextTemp = next + step;
             return p[next].reg;
         }
-        next++;
+        next+=step;
     }
     next = *nextTemp;
-    for (i=0; i< numTemps; i++) {
+    for (i=0; i< numTemps; i+=step) {
         if (next >= numTemps)
             next = 0;
         if (!p[next].inUse) {
             dvmCompilerClobber(cUnit, p[next].reg);
             p[next].inUse = true;
             p[next].pair = false;
-            *nextTemp = next + 1;
+            *nextTemp = next + step;
             return p[next].reg;
         }
-        next++;
+        next+=step;
     }
     if (required) {
         LOGE("No free temp registers");
@@ -306,21 +306,31 @@ extern int dvmCompilerAllocFreeTemp(CompilationUnit *cUnit)
 {
     return allocTempBody(cUnit, cUnit->regPool->coreTemps,
                          cUnit->regPool->numCoreTemps,
-                         &cUnit->regPool->nextCoreTemp, true);
+                         &cUnit->regPool->nextCoreTemp, true, 1);
 }
 
 extern int dvmCompilerAllocTemp(CompilationUnit *cUnit)
 {
     return allocTempBody(cUnit, cUnit->regPool->coreTemps,
                          cUnit->regPool->numCoreTemps,
-                         &cUnit->regPool->nextCoreTemp, true);
+                         &cUnit->regPool->nextCoreTemp, true, 1);
 }
 
 extern int dvmCompilerAllocTempFloat(CompilationUnit *cUnit)
 {
+#ifdef CPU_LOONGSON3
+/* unfortunately loongson3 is not fully mips64 compatible in fp register
+   usage, it can use only 16 even register for single float operations 
+   when FR=0
+*/
     return allocTempBody(cUnit, cUnit->regPool->FPTemps,
                          cUnit->regPool->numFPTemps,
-                         &cUnit->regPool->nextFPTemp, true);
+                         &cUnit->regPool->nextFPTemp, true, 2);
+#else
+    return allocTempBody(cUnit, cUnit->regPool->FPTemps,
+                         cUnit->regPool->numFPTemps,
+                         &cUnit->regPool->nextFPTemp, true, 1);
+#endif
 }
 
 static RegisterInfo *allocLiveBody(RegisterInfo *p, int numTemps, int sReg)
